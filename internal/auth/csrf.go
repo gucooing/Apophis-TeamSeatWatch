@@ -52,8 +52,8 @@ func (policy OriginPolicy) Check(r *http.Request) error {
 }
 
 // SecureCookies reports whether Owner credentials must use transport-secure cookies.
-// An HTTP-only origin is reserved for local development; any HTTPS origin keeps
-// the production transport guarantee enabled.
+// HTTP origins support direct or reverse-proxied deployments; any configured
+// HTTPS origin requires Secure cookies as seen by the browser.
 func (policy OriginPolicy) SecureCookies() bool {
 	for origin := range policy.allowed {
 		parsed, err := url.Parse(origin)

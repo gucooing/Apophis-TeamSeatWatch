@@ -67,8 +67,6 @@ const (
 	maxAuthHops      = 12
 )
 
-const browserAuthUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
-
 var authChallengePattern = regexp.MustCompile(`(?:(?:"challenge_id"|"challengeId"|"mfaChallengeId"|"mfa_challenge_id")\s*:\s*"([A-Za-z0-9_-]{8,})"|/mfa-challenge/([A-Za-z0-9_-]{8,}))`)
 
 // CreateDeliveryCredentials performs the real account login and workspace-bound PKCE grant.
@@ -337,7 +335,7 @@ func (r *HTTPReader) authJSONWithJar(ctx context.Context, jar http.CookieJar, me
 		return nil, errors.New("authentication request is invalid")
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", browserAuthUA)
+	setBrowserRequestHeaders(req)
 	origin := officialAuthBase
 	if strings.HasPrefix(target, officialChatBase) {
 		origin = officialChatBase
@@ -394,7 +392,7 @@ func (r *HTTPReader) followBrowserRedirect(ctx context.Context, jar http.CookieJ
 			return current, nil, errors.New("authentication redirect URL is invalid")
 		}
 		req.Header.Set("Accept", "text/html,application/xhtml+xml,application/json")
-		req.Header.Set("User-Agent", browserAuthUA)
+		setBrowserRequestHeaders(req)
 		if referer != "" {
 			req.Header.Set("Referer", referer)
 		}
@@ -441,7 +439,7 @@ func captureWithJar(ctx context.Context, source *http.Client, jar http.CookieJar
 			return "", errors.New("authorization URL is invalid")
 		}
 		req.Header.Set("Accept", "text/html,application/xhtml+xml,application/json")
-		req.Header.Set("User-Agent", browserAuthUA)
+		setBrowserRequestHeaders(req)
 		response, err := client.Do(req)
 		if err != nil {
 			return "", err
@@ -662,7 +660,7 @@ func (r *HTTPReader) bearerRequest(ctx context.Context, jar http.CookieJar, targ
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Origin", officialChatBase)
-	req.Header.Set("User-Agent", CodexTokenUA)
+	setCodexRequestHeaders(req)
 	client := &http.Client{Transport: r.client.Transport, Jar: jar, Timeout: r.client.Timeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	response, err := client.Do(req)
 	if err != nil {

@@ -18,7 +18,7 @@ func TestAccountsCheckDiscoveryUsesOnlySavedPersonalSessionAndReadOnlyEndpoint(t
 	calls, releases := 0, 0
 	client := &http.Client{Transport: accountsRoundTrip(func(req *http.Request) (*http.Response, error) {
 		calls++
-		if req.Method != http.MethodGet || req.URL.String() != accountsCheckURL || req.Header.Get("Authorization") != "Bearer personal-at" || req.Header.Get("oai-device-id") != "device-1" || !strings.Contains(req.Header.Get("Cookie"), "__Secure-next-auth.session-token=saved-cookie") {
+		if req.Method != http.MethodGet || req.URL.String() != accountsCheckURL+"?timezone_offset_min=0" || req.Header.Get("Authorization") != "Bearer personal-at" || req.Header.Get("oai-device-id") != "device-1" || !strings.Contains(req.Header.Get("Cookie"), "__Secure-next-auth.session-token=saved-cookie") {
 			t.Fatalf("incorrect scoped GET: %v %v", req.URL, req.Header)
 		}
 		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"accounts":{"personal":{"account":{"account_id":"personal","name":"Private","plan_type":"personal","structure":"personal"}},"one":{"account":{"account_id":"team-1","name":"First","plan_type":"team","structure":"workspace","workspace_role":"owner"}},"duplicate":{"account":{"account_id":"team-1","name":"Alias","plan_type":"team","structure":"workspace","workspace_role":"owner"}},"two":{"account":{"account_id":"team-2","name":"Second","plan_type":"business","structure":"workspace","workspace_membership":{"accountRole":"admin"}}}}}`)), Request: req}, nil

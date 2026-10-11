@@ -95,23 +95,26 @@
 
 ## 快速开始
 
-准备一台 **Linux x86_64** 主机，安装 Docker Engine（含 Compose）、Python 3 和 OpenSSL。执行：
+准备一台 **Linux x86_64** 主机，安装 Docker Engine（含 Compose）。从本仓库发布的 tag 镜像部署，无需在主机上编译 Go 或前端：
 
 ```bash
-git clone https://github.com/xft0202/Apophis-TeamSeatWatch.git
+git clone https://github.com/gucooing/Apophis-TeamSeatWatch.git
 cd Apophis-TeamSeatWatch
-python3 deploy/manage.py start
+cp deploy/.env.example .env
+# 将 .env 中的 TSW_IMAGE 改为已发布的 tag 镜像；反向代理部署时设置 TSW_OWNER_ORIGINS。
+docker compose --env-file .env -f deploy/compose.yaml up -d
+docker compose --env-file .env -f deploy/compose.yaml logs control
 ```
 
-首次启动会自动构建应用、准备配置，并引导你设置管理员密码。看到 **“已就绪 / Ready”** 后，按提示信任本机证书，然后打开：
+首次启动会自动准备数据库与密钥、迁移数据库，并创建管理员 `owner`。随机初始密码在 `control` 容器日志的 `owner_initialized` 记录中，仅首次创建时输出。自定义密码取消长度限制，需为非空值。对外入口使用 HTTP，可由已有反向代理提供 HTTPS：
 
-- **管理工作台**：`https://localhost:18443/owner/`<br>
-  使用 `owner` 与刚设置的密码登录。
-- **用户兑换入口**：`https://localhost:18444/redeem/`<br>
+- **管理工作台**：`http://localhost:18443/owner/`<br>
+  使用 `owner` 与日志中的初始密码登录。
+- **用户兑换入口**：`http://localhost:18444/redeem/`<br>
   用于卡密兑换与 401 找回。
 
 **[查看部署与首次使用指南 →](docs/deployment.md)**<br>
-以上为部署主机的本机入口，远程访问、兑换域名与日常维护方法见指南。
+指南包含 tag 发布、无需克隆仓库的 Docker 命令、反向代理配置、客户端标识与维护方法。
 
 <a id="structure"></a>
 

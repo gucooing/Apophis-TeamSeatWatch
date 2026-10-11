@@ -6,12 +6,19 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
 
-const accountsCheckURL = "https://chatgpt.com/backend-api/accounts/check/v4-2023-04-27?timezone_offset_min=-480"
+const accountsCheckURL = "https://chatgpt.com/backend-api/accounts/check/v4-2023-04-27"
+
+func accountsCheckRequestURL() string {
+	query := url.Values{"timezone_offset_min": {strconv.Itoa(clientProfile().timezoneOffsetMinutes())}}
+	return accountsCheckURL + "?" + query.Encode()
+}
 
 // DiscoveryClient leases one already-admitted transport for this read attempt.
 // A production caller must supply an egress lease, not http.DefaultClient.
@@ -40,14 +47,14 @@ func (a AccountsCheckDiscovery) Discover(ctx context.Context, session PersonalSe
 	client := *source
 	client.Jar = jar
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, accountsCheckURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, accountsCheckRequestURL(), nil)
 	if err != nil {
 		return DiscoveryResult{}, err
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+session.AccessToken)
 	req.Header.Set("oai-device-id", session.DeviceID)
-	req.Header.Set("User-Agent", browserAuthUA)
+	setBrowserRequestHeaders(req)
 	resp, err := client.Do(req)
 	if err != nil {
 		return DiscoveryResult{Status: "discovery_failed"}, nil

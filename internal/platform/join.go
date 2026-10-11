@@ -53,7 +53,7 @@ func (r *HTTPReader) doJSON(ctx context.Context, method, path string, body io.Re
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Origin", "https://chatgpt.com")
 	request.Header.Set("Referer", "https://chatgpt.com/")
-	request.Header.Set("User-Agent", "Apophis-TeamSeatWatch/1")
+	setBrowserRequestHeaders(request)
 	response, err := r.client.Do(request)
 	if err != nil {
 		return nil, nil, err

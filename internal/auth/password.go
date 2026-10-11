@@ -7,13 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"unicode/utf8"
 
 	"golang.org/x/crypto/argon2"
 )
-
-// PasswordMinLength is the product policy measured in Unicode code points.
-const PasswordMinLength = 14
 
 const (
 	argonVersion    uint32 = 19
@@ -24,10 +20,10 @@ const (
 	argonKeyLength         = 32
 )
 
-// HashPassword validates policy and returns a versioned Argon2id PHC-style value with a fresh salt.
+// HashPassword accepts a nonempty password and returns an Argon2id hash with a fresh salt.
 func HashPassword(password string) (string, error) {
-	if utf8.RuneCountInString(password) < PasswordMinLength {
-		return "", errors.New("password is too short")
+	if password == "" {
+		return "", errors.New("password is empty")
 	}
 	salt := make([]byte, argonSaltLength)
 	if _, err := rand.Read(salt); err != nil {

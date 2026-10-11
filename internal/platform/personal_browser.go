@@ -15,6 +15,7 @@ import (
 
 	"github.com/chromedp/cdproto"
 	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/fetch"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
@@ -77,7 +78,9 @@ func personalBrowser(ctx context.Context, source *http.Client, allowed func(*net
 		return nil, nil, nil, err
 	}
 	opts := append([]chromedp.ExecAllocatorOption{}, chromedp.DefaultExecAllocatorOptions[:]...)
+	profile := clientProfile()
 	opts = append(opts, chromedp.ExecPath("/usr/bin/chromium"), chromedp.NoSandbox,
+		chromedp.UserAgent(profile.BrowserUserAgent), chromedp.Flag("lang", profile.language()),
 		chromedp.Flag("headless", false), chromedp.Flag("enable-automation", false),
 		chromedp.Flag("disable-blink-features", "AutomationControlled"),
 		chromedp.Flag("disable-quic", true), chromedp.Flag("proxy-bypass-list", "<-loopback>"), chromedp.ProxyServer(route.URL()))
@@ -87,6 +90,18 @@ func personalBrowser(ctx context.Context, source *http.Client, allowed func(*net
 	if err = chromedp.Do(browser); err != nil {
 		close()
 		return nil, nil, nil, errors.New("personal browser unavailable")
+	}
+	if _, err = chromedp.Call(browser, network.SetExtraHTTPHeaders, network.SetExtraHTTPHeadersParams{Headers: network.Headers{"Accept-Language": profile.AcceptLanguage}}); err != nil {
+		close()
+		return nil, nil, nil, errors.New("personal browser language unavailable")
+	}
+	if _, err = chromedp.Call(browser, emulation.SetLocaleOverride, emulation.SetLocaleOverrideParams{Locale: strings.ReplaceAll(profile.language(), "-", "_")}); err != nil {
+		close()
+		return nil, nil, nil, errors.New("personal browser locale unavailable")
+	}
+	if _, err = chromedp.Call(browser, emulation.SetTimezoneOverride, emulation.SetTimezoneOverrideParams{TimezoneID: profile.Timezone}); err != nil {
+		close()
+		return nil, nil, nil, errors.New("personal browser timezone unavailable")
 	}
 	events := chromedp.Events(browser, fetch.RequestPaused)
 	go func() {

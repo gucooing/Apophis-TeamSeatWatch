@@ -1,52 +1,112 @@
+# Download this file as compose.yaml together with the release's env.example.
 services:
+  initialize:
+    image: ${TSW_IMAGE:?Set TSW_IMAGE to a published GHCR image and tag}
+    platform: linux/amd64
+    network_mode: none
+    command: [initialize]
+    volumes:
+      - database_secrets:/state/database
+      - control_secrets:/state/control
+      - gateway_secrets:/state/gateway
+
   postgres:
     image: postgres:17-alpine
-    network_mode: host
     restart: unless-stopped
-    env_file: ${TSW_INSTALL_DIR}/postgres.env
-    command: [postgres, -c, listen_addresses=127.0.0.1, -c, 'port=${TSW_DATABASE_PORT}']
+    depends_on:
+      initialize:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_USER: teamseatwatch
+      POSTGRES_DB: teamseatwatch
+      POSTGRES_PASSWORD_FILE: /run/secrets/password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
     volumes:
       - database:/var/lib/postgresql/data
+      - database_secrets:/run/secrets:ro
     healthcheck:
-      test: [CMD, pg_isready, -h, 127.0.0.1, -p, '${TSW_DATABASE_PORT}', -U, teamseatwatch, -d, teamseatwatch]
+      test: [CMD, pg_isready, -U, teamseatwatch, -d, teamseatwatch]
       interval: 2s
       timeout: 5s
       retries: 30
 
-  control:
-    image: ${TSW_IMAGE}
-    network_mode: host
-    restart: unless-stopped
-    command: [control]
-    env_file: ${TSW_INSTALL_DIR}/control.env
+  migrate:
+    image: ${TSW_IMAGE:?Set TSW_IMAGE to a published GHCR image and tag}
+    platform: linux/amd64
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: [migrate]
+    environment:
+      TSW_DATABASE_URL_FILE: /secrets/database-url
+      TSW_TOTP_KEYRING_FILE: /secrets/keyring.json
     volumes:
-      - ${TSW_INSTALL_DIR}/keyring.json:/secrets/keyring.json:ro
-      - ${TSW_INSTALL_DIR}/tls/control:/tls:ro
+      - control_secrets:/secrets:ro
+
+  control:
+    image: ${TSW_IMAGE:?Set TSW_IMAGE to a published GHCR image and tag}
+    platform: linux/amd64
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: [control]
+    shm_size: 512mb
+    environment:
+      TSW_DATABASE_URL_FILE: /secrets/database-url
+      TSW_TOTP_KEYRING_FILE: /secrets/keyring.json
+      TSW_PLATFORM_BASE_URL: https://chatgpt.com
+      TSW_CONTROL_LISTEN: 0.0.0.0:8080
+      TSW_PRIVATE_LISTEN: 0.0.0.0:8081
+      TSW_OWNER_STATIC_DIR: /app/owner
+      TSW_OWNER_ORIGINS: ${TSW_OWNER_ORIGINS:-http://localhost:18443,http://127.0.0.1:18443}
+      TSW_TLS_CA_FILE: /secrets/authority/ca.crt
+      TSW_TLS_CERT_FILE: /secrets/tls/server.crt
+      TSW_TLS_KEY_FILE: /secrets/tls/server.key
+      TSW_CLIENT_USER_AGENT: ${TSW_CLIENT_USER_AGENT:-}
+      TSW_CLIENT_ACCEPT_LANGUAGE: ${TSW_CLIENT_ACCEPT_LANGUAGE:-en-US,en;q=0.9}
+      TSW_CLIENT_TIMEZONE: ${TSW_CLIENT_TIMEZONE:-UTC}
+      TSW_CLIENT_WEB_VERSION: ${TSW_CLIENT_WEB_VERSION:-}
+      TSW_CLIENT_WEB_BUILD: ${TSW_CLIENT_WEB_BUILD:-}
+      TSW_CLIENT_CODEX_USER_AGENT: ${TSW_CLIENT_CODEX_USER_AGENT:-}
+    ports:
+      - '${TSW_BIND_ADDRESS:-127.0.0.1}:${TSW_OWNER_PORT:-18443}:8080'
+    volumes:
+      - control_secrets:/secrets:ro
 
   gateway:
-    image: ${TSW_IMAGE}
-    network_mode: host
+    image: ${TSW_IMAGE:?Set TSW_IMAGE to a published GHCR image and tag}
+    platform: linux/amd64
     restart: unless-stopped
+    depends_on:
+      control:
+        condition: service_started
     command: [gateway]
-    env_file: ${TSW_INSTALL_DIR}/gateway.env
+    environment:
+      TSW_GATEWAY_LISTEN: 0.0.0.0:8080
+      TSW_CONTROL_PRIVATE_URL: https://control:8081/internal/v1/health
+      TSW_PUBLIC_STATIC_DIR: /app/public
+      TSW_TLS_CA_FILE: /tls/ca.crt
+      TSW_TLS_CERT_FILE: /tls/client.crt
+      TSW_TLS_KEY_FILE: /tls/client.key
+      TSW_CONTROL_SERVER_NAME: control
+    ports:
+      - '${TSW_BIND_ADDRESS:-127.0.0.1}:${TSW_REDEEM_PORT:-18444}:8080'
     volumes:
-      - ${TSW_INSTALL_DIR}/tls/gateway:/tls:ro
-
-  https:
-    image: nginx:stable-alpine
-    network_mode: host
-    restart: unless-stopped
-    volumes:
-      - ${TSW_INSTALL_DIR}/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ${TSW_INSTALL_DIR}/tls/web:/tls:ro
+      - gateway_secrets:/tls:ro
 
   cli:
-    image: ${TSW_IMAGE}
-    network_mode: host
+    image: ${TSW_IMAGE:?Set TSW_IMAGE to a published GHCR image and tag}
+    platform: linux/amd64
     profiles: [maintenance]
-    env_file: ${TSW_INSTALL_DIR}/database.env
+    environment:
+      TSW_DATABASE_URL_FILE: /secrets/database-url
+      TSW_TOTP_KEYRING_FILE: /secrets/keyring.json
     volumes:
-      - ${TSW_INSTALL_DIR}/keyring.json:/secrets/keyring.json:ro
+      - control_secrets:/secrets:ro
 
 volumes:
   database:
+  database_secrets:
+  control_secrets:
+  gateway_secrets:

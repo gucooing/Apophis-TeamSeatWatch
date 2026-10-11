@@ -1,7 +1,9 @@
 .git
 .pi
 .scratch
-deploy
+deploy/*.env
+deploy/.env
+**/.env
 docs
 web/node_modules
 web/dist

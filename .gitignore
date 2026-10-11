@@ -23,6 +23,8 @@ docs/assets/*
 !docs/assets/readme/
 !docs/assets/readme/**
 CONTEXT.md
+.env
+deploy/*.env
 REQUIREMENTS.md
 AGENTS.md
 DESIGN.md

@@ -140,7 +140,7 @@ func (r selectedHTTPRead) request(ctx context.Context, raw, endpoint string) ([]
 	req.Header.Set("Authorization", "Bearer "+r.access.AccessToken)
 	req.Header.Set("Origin", selectedWorkspaceOrigin)
 	req.Header.Set("Referer", selectedWorkspaceOrigin+"/admin/members")
-	req.Header.Set("User-Agent", browserAuthUA)
+	setBrowserRequestHeaders(req)
 	req.Header.Set("Oai-Device-Id", r.access.DeviceID)
 	req.Header.Set("Sec-Fetch-Site", "same-origin")
 	req.Header.Set("Sec-Fetch-Mode", "cors")
@@ -148,11 +148,7 @@ func (r selectedHTTPRead) request(ctx context.Context, raw, endpoint string) ([]
 	if endpoint == "outbound_invites" {
 		req.Header.Set("chatgpt-account-id", r.workspaceID)
 		req.Header.Set("Oai-Session-Id", r.access.SessionID)
-		req.Header.Set("Oai-Client-Build-Number", "9432397")
-		req.Header.Set("Oai-Client-Version", "prod-1b777b39db92d7476d69bf3cd407f6b9a41f7410")
-		req.Header.Set("Oai-Language", "zh-CN")
-		req.Header.Set("X-Oai-Is-Client-Observation", "null")
-		req.Header.Set("X-Oai-Is-Pending-Updates", `{"v":3,"updates":[]}`)
+		setWebClientMetadata(req)
 		req.Header.Set("X-OpenAI-Target-Path", "/backend-api/accounts/"+url.PathEscape(r.workspaceID)+"/invites")
 		req.Header.Set("X-OpenAI-Target-Route", "/backend-api/accounts/{account_id}/invites")
 	}

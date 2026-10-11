@@ -95,23 +95,26 @@ Choose the owning account, target workspace and source batch, then follow five s
 
 ## Get started
 
-Prepare a **Linux x86_64** host with Docker Engine (including Compose), Python 3 and OpenSSL. Run:
+Prepare a **Linux x86_64** host with Docker Engine (including Compose). Deploy a published tag image without compiling Go or the frontend on your host:
 
 ```bash
-git clone https://github.com/xft0202/Apophis-TeamSeatWatch.git
+git clone https://github.com/gucooing/Apophis-TeamSeatWatch.git
 cd Apophis-TeamSeatWatch
-python3 deploy/manage.py start
+cp deploy/.env.example .env
+# Set TSW_IMAGE to a published tag and TSW_OWNER_ORIGINS to your admin browser origin.
+docker compose --env-file .env -f deploy/compose.yaml up -d
+docker compose --env-file .env -f deploy/compose.yaml logs control
 ```
 
-The first run builds the app, prepares the configuration and guides you through setting an admin password. Wait for **“已就绪 / Ready”**, trust the local certificate as instructed, then open:
+The first run prepares the database and keys, applies migrations and creates the `owner` admin. Its random password appears once in the control container's `owner_initialized` log entry. Custom passwords have no minimum length and must be nonempty. Both entry points use HTTP; your existing reverse proxy can terminate HTTPS:
 
-- **Admin workspace**: `https://localhost:18443/owner/`<br>
-  Sign in with `owner` and your new password.
-- **Customer redemption**: `https://localhost:18444/redeem/`<br>
+- **Admin workspace**: `http://localhost:18443/owner/`<br>
+  Sign in with `owner` and the initial password from the logs.
+- **Customer redemption**: `http://localhost:18444/redeem/`<br>
   Redeem cards and recover from 401 errors.
 
 **[Read the deployment & first-use guide →](docs/deployment.en.md)**<br>
-These are local addresses on the deployment host. The guide covers remote access, a redemption domain and routine maintenance.
+The guide covers tag releases, Docker commands without a checkout, reverse proxy configuration, client identity settings and maintenance.
 
 <a id="structure"></a>
 

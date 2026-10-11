@@ -16,10 +16,13 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o
 
 FROM debian@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates chromium xvfb xauth fonts-liberation tini \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates chromium xvfb xauth fonts-liberation tini openssl tzdata \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=go-builder /out/apophis-teamseatwatch /apophis-teamseatwatch
 COPY --from=go-builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=web-builder /src/web/dist/owner /app/owner
 COPY --from=web-builder /src/web/dist/public /app/public
-ENTRYPOINT ["/usr/bin/tini", "-g", "--", "xvfb-run", "-a", "/apophis-teamseatwatch"]
+COPY deploy/entrypoint.sh deploy/initialize.sh /app/deploy/
+RUN chmod 755 /app/deploy/entrypoint.sh /app/deploy/initialize.sh
+EXPOSE 8080
+ENTRYPOINT ["/app/deploy/entrypoint.sh"]

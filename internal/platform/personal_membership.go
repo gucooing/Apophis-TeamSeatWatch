@@ -81,7 +81,7 @@ func (r OfficialPersonalMembershipReader) ReadMembers(ctx context.Context, sessi
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(session.AccessToken))
 	req.Header.Set("oai-device-id", strings.TrimSpace(session.DeviceID))
-	req.Header.Set("User-Agent", browserAuthUA)
+	setBrowserRequestHeaders(req)
 	response, err := client.Do(req)
 	if err != nil || response == nil {
 		return fail(errors.New("personal membership reader unavailable"))

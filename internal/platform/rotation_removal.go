@@ -113,7 +113,7 @@ func (r OfficialWorkspaceMemberRemover) RemoveWorkspaceMember(ctx context.Contex
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", selectedWorkspaceOrigin)
 	req.Header.Set("Referer", selectedWorkspaceOrigin+"/admin/members")
-	req.Header.Set("User-Agent", browserAuthUA)
+	setBrowserRequestHeaders(req)
 	req.Header.Set("Oai-Device-Id", strings.TrimSpace(access.DeviceID))
 	req.Header.Set("Sec-Fetch-Site", "same-origin")
 	req.Header.Set("Sec-Fetch-Mode", "cors")

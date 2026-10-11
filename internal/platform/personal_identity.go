@@ -53,7 +53,7 @@ func (c OfficialPersonalIdentityConfirmer) ConfirmPersonalIdentity(ctx context.C
 		return fail()
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", browserAuthUA)
+	setBrowserRequestHeaders(req)
 	response, err := client.Do(req)
 	if err != nil || response == nil {
 		return fail()

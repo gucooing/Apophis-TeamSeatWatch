@@ -81,6 +81,10 @@ func runControl(ctx context.Context, getenv func(string) string, logger *slog.Lo
 	if err != nil {
 		return fmt.Errorf("invalid TOTP key ring: %w", err)
 	}
+	if err := platform.ConfigureClientProfile(ctx, getenv); err != nil {
+		logger.Error("client_profile_invalid", "error", err)
+		return diagnostic("client_profile_invalid")
+	}
 	platformBaseURL, err := required(getenv, platformBaseURLEnv)
 	if err != nil {
 		return err
@@ -144,6 +148,9 @@ func runControl(ctx context.Context, getenv func(string) string, logger *slog.Lo
 	})
 	if err != nil {
 		return fmt.Errorf("invalid private TLS configuration: %w", err)
+	}
+	if err := ensureOwner(ctx, dsn, logger); err != nil {
+		return fmt.Errorf("initialize owner: %w", err)
 	}
 	handlers, err := runtime.NewControlHandlers(runtime.ControlConfig{
 		DatabaseURL: dsn, StaticDir: staticDir,
@@ -287,8 +294,10 @@ func validatePrivateAddress(address string) error {
 		return nil
 	}
 	ip, err := netip.ParseAddr(host)
-	if err != nil || !(ip.IsLoopback() || ip.IsPrivate()) {
-		return errors.New("private listener must bind to a loopback or private IP")
+	// Container listeners may bind all interfaces; the private socket always
+	// authenticates callers with the configured mTLS client certificate.
+	if err != nil || !(ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified()) {
+		return errors.New("private listener must bind to a loopback, private or unspecified IP")
 	}
 	return nil
 }

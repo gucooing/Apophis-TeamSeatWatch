@@ -158,16 +158,12 @@ func (j OfficialRotationCandidateJoiner) do(ctx context.Context, client *http.Cl
 	if err != nil {
 		return result, ErrRotationJoinUnavailable
 	}
-	// Intentionally use a header subset and the project's browserAuthUA, not
-	// the reference browser fingerprint (Sec-Ch-Ua hints and Priority omitted).
-	// The effective root Referer and target headers match the sourced stages;
-	// this does not claim byte-for-byte or live protocol compatibility.
+	// Keep the deployment's web identity consistent with Personal login.
 	req.Header.Set("Accept", "*/*")
-	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(session.AccessToken))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("oai-device-id", strings.TrimSpace(session.DeviceID))
-	req.Header.Set("oai-language", "en-US")
+	setWebClientMetadata(req)
 	req.Header.Set("Origin", selectedWorkspaceOrigin)
 	req.Header.Set("Referer", selectedWorkspaceOrigin+"/")
 	req.Header.Set("X-Openai-Target-Path", path)
@@ -175,7 +171,7 @@ func (j OfficialRotationCandidateJoiner) do(ctx context.Context, client *http.Cl
 	req.Header.Set("Sec-Fetch-Site", "same-origin")
 	req.Header.Set("Sec-Fetch-Mode", "cors")
 	req.Header.Set("Sec-Fetch-Dest", "empty")
-	req.Header.Set("User-Agent", browserAuthUA)
+	setBrowserRequestHeaders(req)
 	// Once Do is entered the attempt is never provably unsent, even if it
 	// fails locally. No receipt or error can discharge the sent obligation.
 	result.RequestSent = true

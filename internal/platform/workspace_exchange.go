@@ -88,10 +88,10 @@ func (e OfficialWorkspaceTokenExchanger) exchangeWorkspace(ctx context.Context, 
 	if err != nil {
 		return failed, ErrWorkspaceExchangeUnavailable
 	}
-	req.Header.Set("User-Agent", browserAuthUA)
+	setBrowserRequestHeaders(req)
 	req.Header.Set("Accept", "*/*")
 	req.Header.Set("Oai-Device-Id", personal.DeviceID)
-	req.Header.Set("Oai-Client-Version", "prod-75c89a339d12aa428439cc667726d9e2351c5334")
+	setWebClientMetadata(req)
 	req.Header.Set("Sec-Fetch-Site", "same-origin")
 	req.Header.Set("Sec-Fetch-Mode", "cors")
 	req.Header.Set("Sec-Fetch-Dest", "empty")

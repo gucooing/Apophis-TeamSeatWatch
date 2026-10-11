@@ -1,0 +1,104 @@
+name: Publish Docker image
+
+on:
+  push:
+    tags:
+      - '**'
+
+concurrency:
+  group: docker-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v6
+
+      - name: Prepare image name and version
+        id: image
+        shell: bash
+        env:
+          REPOSITORY: ${{ github.repository }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$VERSION" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$ ]]; then
+            printf '%s\n' 'The Git tag must also be a valid Docker tag (1-128 ASCII letters, digits, underscores, dots or dashes).'
+            exit 1
+          fi
+          printf 'name=ghcr.io/%s\nversion=%s\n' "${REPOSITORY,,}" "$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish tagged image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.image.outputs.name }}:${{ steps.image.outputs.version }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.image.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=Apache-2.0
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Publish deployment files and commands
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          IMAGE: ${{ steps.image.outputs.name }}
+          VERSION: ${{ steps.image.outputs.version }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p release
+          cp deploy/compose.yaml release/compose.yaml
+          cp deploy/.env.example release/env.example
+          sed -i "s|^TSW_IMAGE=.*|TSW_IMAGE=$IMAGE:$VERSION|" release/env.example
+          cat > release/notes.md <<EOF
+          Container image: \`$IMAGE:$VERSION\`
+
+          Digest: \`$DIGEST\`
+
+          Deploy with Docker Compose on Linux x86_64:
+
+          \`\`\`bash
+          mkdir -p teamseatwatch
+          cd teamseatwatch
+          curl -fL https://github.com/$REPOSITORY/releases/download/$VERSION/compose.yaml -o compose.yaml
+          curl -fL https://github.com/$REPOSITORY/releases/download/$VERSION/env.example -o .env
+          # Set TSW_OWNER_ORIGINS in .env to the admin URL used in your browser.
+          docker compose up -d
+          docker compose logs control
+          \`\`\`
+
+          The owner account and random password are created automatically on the first start and printed in the control container log. Both public entry points use HTTP; terminate HTTPS at your reverse proxy.
+
+          On first publication, make the GHCR package Public for anonymous pulls, or log in to ghcr.io with a classic PAT that has read:packages access before deployment.
+          EOF
+          if gh release view "$VERSION" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$VERSION" release/compose.yaml release/env.example --repo "$REPOSITORY" --clobber
+          else
+            release_flags=()
+            if [[ "$VERSION" == *-* ]]; then release_flags+=(--prerelease); fi
+            gh release create "$VERSION" release/compose.yaml release/env.example --repo "$REPOSITORY" --verify-tag --title "$VERSION" --notes-file release/notes.md "${release_flags[@]}"
+          fi
+          cat release/notes.md >> "$GITHUB_STEP_SUMMARY"

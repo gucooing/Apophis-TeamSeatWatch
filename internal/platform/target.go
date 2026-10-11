@@ -91,16 +91,10 @@ func (r *HTTPReader) ProbeTarget(ctx context.Context) (TargetProbeResult, error)
 		result.ErrorCode = "request_invalid"
 		return result, err
 	}
-	// Apophis-TeamSeatWatch's platform adapter authenticates the prepared target account;
-	// the read route and Codex request identity match the proven reference probe.
+	// Usage probes retain the Codex identity independently of web login settings.
 	req.SetBasicAuth(r.credentials.LoginIdentifier, r.credentials.Password)
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("OpenAI-Beta", "responses=experimental")
-	req.Header.Set("Originator", "codex_cli_rs")
-	req.Header.Set("Version", "0.125.0")
-	req.Header.Set("User-Agent", "codex_cli_rs/0.125.0")
-	req.Header.Set("X-OpenAI-Target-Path", "/backend-api/wham/usage")
-	req.Header.Set("X-OpenAI-Target-Route", "/backend-api/wham/usage")
+	setCodexRequestHeaders(req)
 	response, err := r.client.Do(req)
 	if err != nil {
 		result.Status = ClassifyTargetProbe(0, "", err, false)

@@ -131,10 +131,10 @@ func parseRotationUsage(body []byte, workspace, subject string, observed time.Ti
 }
 
 // Migrated from the reference OAuth liveness builder. These requests carry
-// only the current official CLI user agent plus bearer/account identity.
+// only the configured Codex user agent plus bearer/account identity.
 func buildCodexOAuthUsageHeaders(req *http.Request, accessToken, chatgptAccountID string) {
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("User-Agent", "codex_cli_rs/0.146.0")
+	setCodexRequestHeaders(req)
 	if chatgptAccountID != "" {
 		req.Header.Set("chatgpt-account-id", chatgptAccountID)
 	}

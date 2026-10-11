@@ -122,6 +122,7 @@ func (r *HTTPReader) read(ctx context.Context, workspace string, endpoint Endpoi
 	}
 	req.SetBasicAuth(r.credentials.LoginIdentifier, r.credentials.Password)
 	req.Header.Set("Accept", "application/json")
+	setBrowserRequestHeaders(req)
 	response, err := r.client.Do(req)
 	if err != nil {
 		result.Outcome = Classify(0, "", err)

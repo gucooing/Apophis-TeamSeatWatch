@@ -72,7 +72,7 @@ func CapturePKCEAuthorizationCode(ctx context.Context, client *http.Client, auth
 			return "", errors.New("PKCE authorization request is invalid")
 		}
 		req.Header.Set("Accept", "text/html,application/xhtml+xml,application/json")
-		req.Header.Set("User-Agent", CodexTokenUA)
+		setCodexRequestHeaders(req)
 		response, err := follow.Do(req)
 		if err != nil {
 			return "", err
@@ -130,7 +130,7 @@ func RefreshDeliveryCredentials(ctx context.Context, client *http.Client, refres
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", CodexTokenUA)
+	setCodexRequestHeaders(req)
 	req.Header.Set("originator", CodexOriginator)
 	response, err := client.Do(req)
 	if err != nil {
@@ -173,7 +173,7 @@ func ExchangePKCECode(ctx context.Context, client *http.Client, code, verifier s
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", CodexTokenUA)
+	setCodexRequestHeaders(req)
 	req.Header.Set("originator", CodexOriginator)
 	response, err := client.Do(req)
 	if err != nil {

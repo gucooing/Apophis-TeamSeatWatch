@@ -50,12 +50,7 @@ func (p PersonalUsageProbe) Probe(ctx context.Context, session PersonalSession) 
 	}
 	req.Header.Set("Authorization", "Bearer "+session.AccessToken)
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("OpenAI-Beta", "responses=experimental")
-	req.Header.Set("Originator", "codex_cli_rs")
-	req.Header.Set("Version", "0.125.0")
-	req.Header.Set("User-Agent", "codex_cli_rs/0.125.0")
-	req.Header.Set("X-OpenAI-Target-Path", "/backend-api/wham/usage")
-	req.Header.Set("X-OpenAI-Target-Route", "/backend-api/wham/usage")
+	setCodexRequestHeaders(req)
 	resp, err := client.Do(req)
 	if err != nil {
 		return PersonalProbeEvidence{TransportError: err}, nil
